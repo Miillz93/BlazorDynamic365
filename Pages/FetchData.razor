@@ -9,7 +9,7 @@
 @inject IHttpClientFactory HttpClientFactory
 @inject Microsoft.Identity.Web.ITokenAcquisition TokenAcquisitionService
 @inject IConfiguration configuration;
-
+@*@using MudBlazor.Examples.Data.Models;*@
 
 
 <PageTitle>Dynamics 365 CRM</PageTitle>
@@ -18,41 +18,49 @@
 
 <p>This component demonstrates fetching data from Dynamic 365 Customer service.</p>
 
+
 @if (Values == null)
 {
     <p><em>Loading...</em></p>
 }
 else
 {
-    <table class="table">
-        <thead>
-            <tr>
-                <th>Firstname</th>
-                <th>Lastname</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Job Title</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var value in Values)
-            {
-                
-                <tr>
-                    <td>@Id</td>
-                    <td>@value.firstname</td>
-                    <td>@value.lastname</td>
-                    <td>@value.telephone1</td>
-                    <td>@value.emailaddress1</td>
-                    <td>@value.jobtitle</td>
-                </tr>
-                Id++;
-            }
-        </tbody>
-    </table>
+    <MudTable Items="Values.AsEnumerable()">
+
+        <HeaderContent>
+            <MudTh>Firstname</MudTh>
+            <MudTh>Lastname</MudTh>
+            <MudTh>Telephone</MudTh>
+            <MudTh>Email</MudTh>
+            <MudTh>Job Title</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="firstname">@context.firstname</MudTd>
+            <MudTd DataLabel="lastname">@context.lastname</MudTd>
+            <MudTd DataLabel="telephone1">@context.telephone1</MudTd>
+            <MudTd DataLabel="emailaddress1">@context.emailaddress1</MudTd>
+            <MudTd DataLabel="jobtitle">@context.jobtitle</MudTd>
+        </RowTemplate>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100, int.MaxValue }" InfoFormat="@($"Left {infoFormat}")" HorizontalAlignment="HorizontalAlignment.Left" HidePageNumber="@hidePageNumber" HidePagination="@hidePagination" HideRowsPerPage="@hideRowsPerPage" />
+            @*<MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100, int.MaxValue }" InfoFormat="@($"Center {infoFormat}")" HorizontalAlignment="HorizontalAlignment.Center" HidePageNumber="@hidePageNumber" HidePagination="@hidePagination" HideRowsPerPage="@hideRowsPerPage" />*@
+        </PagerContent>
+    </MudTable>
+    
+    <div class="d-flex flex-wrap mt-4">
+        <MudSwitch @bind-Checked="@hideRowsPerPage" Color="Color.Tertiary">Hide/Show Rows per Page</MudSwitch>
+        <MudSwitch @bind-Checked="@hidePageNumber" Color="Color.Primary">Hide/Show Page Number</MudSwitch>
+        <MudSwitch @bind-Checked="@hidePagination" Color="Color.Secondary">Hide/Show Pagination</MudSwitch>
+    </div>
 }
 
 @code {
+
+    private bool hidePageNumber;
+    private bool hidePagination;
+    private bool hideRowsPerPage;
+    private string infoFormat = "{first_item}-{last_item} of {all_items}";
+    //------
     private Value[]? Values;
     private HttpClient _httpClient;
     private string? Token;
@@ -69,7 +77,7 @@ else
         _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
 
         // Send the request
-        var dataRequest = await _httpClient.GetAsync($@"{baseUrl}api/data/v9.2/contacts?$select=firstname,lastname,telephone1,jobtitle,emailaddress1&$top=60");
+        var dataRequest = await _httpClient.GetAsync($@"{baseUrl}api/data/v9.2/contacts?$select=firstname,lastname,telephone1,jobtitle,emailaddress1&$top=3000");
 
         if (dataRequest.IsSuccessStatusCode)
         {
