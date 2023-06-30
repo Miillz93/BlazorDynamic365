@@ -10,9 +10,14 @@ using Microsoft.Identity.Web.UI;
 
 var builder = WebApplication.CreateBuilder(args);
 
+string dataverseBaseUri = builder.Configuration.GetSection("DataverseConfig").GetValue<string>("BaseUri");
+
 // Add services to the container.
 builder.Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
-    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"));
+    .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection("AzureAd"))
+    .EnableTokenAcquisitionToCallDownstreamApi(new string[] { $"{dataverseBaseUri}user_impersonation" })
+    .AddInMemoryTokenCaches(); ;
+
 builder.Services.AddControllersWithViews()
     .AddMicrosoftIdentityUI();
 
