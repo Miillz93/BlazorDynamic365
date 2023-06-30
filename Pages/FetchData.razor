@@ -2,13 +2,23 @@
 @using BlazorDynamic365.Data
 @inject WeatherForecastService ForecastService
 
-<PageTitle>Weather forecast</PageTitle>
+@using Microsoft.Identity.Client;
+@using Microsoft.Identity.Web
+@using System.Text.Json;
+@inject MicrosoftIdentityConsentAndConditionalAccessHandler ConsentHandler
+@inject IHttpClientFactory HttpClientFactory
+@inject Microsoft.Identity.Web.ITokenAcquisition TokenAcquisitionService
+@inject IConfiguration configuration;
 
-<h1>Weather forecast</h1>
 
-<p>This component demonstrates fetching data from a service.</p>
 
-@if (forecasts == null)
+<PageTitle>Dynamics 365 CRM</PageTitle>
+
+<h1>Blazor Dynamics 365 CRM</h1>
+
+<p>This component demonstrates fetching data from Dynamic 365 Customer service.</p>
+
+@if (Values == null)
 {
     <p><em>Loading...</em></p>
 }
@@ -17,31 +27,87 @@ else
     <table class="table">
         <thead>
             <tr>
-                <th>Date</th>
-                <th>Temp. (C)</th>
-                <th>Temp. (F)</th>
-                <th>Summary</th>
+                <th>Firstname</th>
+                <th>Lastname</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Job Title</th>
             </tr>
         </thead>
         <tbody>
-            @foreach (var forecast in forecasts)
+            @foreach (var value in Values)
             {
+                
                 <tr>
-                    <td>@forecast.Date.ToShortDateString()</td>
-                    <td>@forecast.TemperatureC</td>
-                    <td>@forecast.TemperatureF</td>
-                    <td>@forecast.Summary</td>
+                    <td>@Id</td>
+                    <td>@value.firstname</td>
+                    <td>@value.lastname</td>
+                    <td>@value.telephone1</td>
+                    <td>@value.emailaddress1</td>
+                    <td>@value.jobtitle</td>
                 </tr>
+                Id++;
             }
         </tbody>
     </table>
 }
 
 @code {
-    private WeatherForecast[]? forecasts;
+    private Value[]? Values;
+    private HttpClient _httpClient;
+    private string? Token;
+
+    int Id = 1;
 
     protected override async Task OnInitializedAsync()
     {
-        forecasts = await ForecastService.GetForecastAsync(DateOnly.FromDateTime(DateTime.Now));
+        string baseUrl = configuration["DataverseConfig:BaseUri"];
+
+         Token = await GetToken();
+
+        // Set the auth token
+        _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", Token);
+
+        // Send the request
+        var dataRequest = await _httpClient.GetAsync($@"{baseUrl}api/data/v9.2/contacts?$select=firstname,lastname,telephone1,jobtitle,emailaddress1&$top=60");
+
+        if (dataRequest.IsSuccessStatusCode)
+        {
+            var jsonString = System.Text.Json.JsonDocument.Parse(await dataRequest.Content.ReadAsStreamAsync());
+            var crmOject = JsonSerializer.Deserialize<Rootobject>(jsonString);
+            Values = crmOject?.value;
+        }
+        else
+        {
+            throw new Exception("Error sending request.");
+        }
     }
+
+    private async Task<string> GetToken()
+    {
+        string baseUrl = configuration["DataverseConfig:BaseUri"];
+
+        // Get the HttpClient
+        _httpClient = HttpClientFactory.CreateClient();
+
+        // Get the token
+        var token = string.Empty;
+        try
+        {
+            token = await TokenAcquisitionService.GetAccessTokenForUserAsync(new string[] { $"{baseUrl}user_impersonation" });
+        }
+
+        catch (MicrosoftIdentityWebChallengeUserException ex)
+        {
+            ConsentHandler.HandleException(ex);
+        }
+        catch (Exception)
+        {
+            throw new Exception("Error getting access token.");
+        }
+        await Task.Delay(100);
+
+        return token;
+    }
+
 }
